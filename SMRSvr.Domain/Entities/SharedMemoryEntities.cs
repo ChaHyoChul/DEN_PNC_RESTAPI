@@ -219,8 +219,8 @@ public unsafe struct SConfigData
 [StructLayout(LayoutKind.Sequential, Pack = 8)]
 public unsafe struct STool
 {
-    public uint dwUsingTime;
     public uint dwMaximumTime;
+    public uint dwUsingTime;
     public double fUsingRate;
     public uint dwErrCode;
 }
@@ -228,10 +228,10 @@ public unsafe struct STool
 [StructLayout(LayoutKind.Sequential, Pack = 8)]
 public unsafe struct SToolData
 {
-    public fixed byte hTool[20 * 24]; // MAX_TOOL_NUM=20, sizeof(STool)=24
     public int bEnableToolUsageTime;
     public int bEnableRelatedTool;
     public double fTimeCountZAxisPos;
+    public fixed byte hTool[20 * 24]; // MAX_TOOL_NUM=20, sizeof(STool)=24
     public int nNumDataForRelatedTool;
     public fixed byte szRelateTool[21 * 64]; // char[21][64] (ANSI)
 }

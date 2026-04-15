@@ -9,6 +9,9 @@ builder.Services.AddSwaggerGen();
 
 // Register Shared Memory Services
 builder.Services.AddSingleton<SharedMemoryService>();
+builder.Services.AddSingleton<MachineStatusService>();
+builder.Services.AddSingleton<MachineControlService>();
+builder.Services.AddSingleton<NcFileService>();
 builder.Services.AddTransient<SharedMemoryTestService>();
 
 builder.Services.AddCors(options =>

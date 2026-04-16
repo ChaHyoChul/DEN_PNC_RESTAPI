@@ -1,4 +1,4 @@
-using SMRSvr.Domain.Dtos;
+using SMRSvr.Domain.Dtos.MachineStatus;
 using SMRSvr.Domain.Entities;
 using SMRSvr.Domain.Enums;
 

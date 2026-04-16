@@ -7,10 +7,10 @@ namespace SMRSvr.Domain.Entities;
 public unsafe struct SNCFileInfo
 {
     public fixed byte id[26 * 2]; // TCHAR (Unicode)
-    public byte is_select;
-    public byte is_select_updown;
-    public byte state;
-    public byte finish;
+    public ushort is_select;      // TCHAR (2 bytes)
+    public ushort is_select_updown; // TCHAR
+    public ushort state;          // TCHAR
+    public ushort finish;         // TCHAR
     public uint file_size;
     public uint total_lines;
     public uint machining_lines;
@@ -336,4 +336,13 @@ public unsafe struct SIpcCommCommand
 {
     public byte m_cmd;
     public fixed byte param[63];
+}
+
+[StructLayout(LayoutKind.Sequential, Pack = 8)]
+public unsafe struct SNCFileMgr
+{
+    public int nNumNCFile;
+    public int nCurNCFileIndex;
+    public int nReverse;
+    public fixed byte hNCFileInfo[100 * 672]; // sizeof(SNCFileInfo) is approx 672 bytes (TCHAR is 2 bytes)
 }

@@ -28,15 +28,12 @@ public class MachineControlService
 
         if (subCmd > 0 || !string.IsNullOrEmpty(param))
         {
-            // SIpcCommCommand의 UParam 구조에 맞춰 데이터 채움
-            // mp (m_cmd 전용 파라미터)와 sp (s_cmd 포함 파라미터) 중 sp 형식을 주로 사용
-            fixed (byte* p = command.param)
+            // 로컬 구조체의 fixed buffer는 unsafe 내에서 바로 포인터(byte*)로 사용 가능합니다.
+            byte* p = command.param;
+            p[0] = subCmd; 
+            if (!string.IsNullOrEmpty(param))
             {
-                p[0] = subCmd; // s_cmd 위치
-                if (!string.IsNullOrEmpty(param))
-                {
-                    SharedMemoryService.SetAnsiString(p + 1, param, 62); // 나머지 62바이트에 param 복사
-                }
+                SharedMemoryService.SetAnsiString(p + 1, param, 62);
             }
         }
         

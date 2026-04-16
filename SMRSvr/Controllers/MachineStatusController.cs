@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SMRSvr.Infrastructure.Services;
 using SMRSvr.Domain.Entities;
+using SMRSvr.Domain.Dtos.MachineStatus;
 
 namespace SMRSvr.Controllers;
 

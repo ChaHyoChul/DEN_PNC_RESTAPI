@@ -1,4 +1,4 @@
-namespace SMRSvr.Domain.Dtos;
+namespace SMRSvr.Domain.Dtos.MachineStatus;
 
 public class ToolStatusDto
 {

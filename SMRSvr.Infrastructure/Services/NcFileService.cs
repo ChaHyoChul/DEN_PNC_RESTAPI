@@ -1,5 +1,7 @@
 using SMRSvr.Domain.Entities;
 using SMRSvr.Domain.Enums;
+using SMRSvr.Domain.Dtos.NcFile;
+using System.IO;
 
 namespace SMRSvr.Infrastructure.Services;
 
@@ -10,52 +12,211 @@ public class NcFileService
 {
     private readonly SharedMemoryService _smService;
     private readonly MachineControlService _controlService;
+    private const string FileMgrMapName = "NCFILE_MGR";
+    private const string TargetNcPath = @"c:\Pnc\Data\NCFILES";
 
     public NcFileService(SharedMemoryService smService, MachineControlService controlService)
     {
         _smService = smService;
         _controlService = controlService;
+        
+        if (!Directory.Exists(TargetNcPath))
+        {
+            Directory.CreateDirectory(TargetNcPath);
+        }
     }
 
     /// <summary>
-    /// 프로그램의 NC 파일 리스트에 새로운 NC 파일을 추가합니다.
+    /// 지정된 경로의 NC 파일을 장비의 NCFILES 폴더로 복사하고 공유 메모리 리스트에 추가합니다.
     /// </summary>
-    /// <param name="fullPath">추가할 NC 파일의 절대 경로</param>
-    public bool AddNcFile(string fullPath)
+    public unsafe bool AddNcFile(string fullPath)
     {
-        // IPC_COMMAND_MANUAL = 99
-        // IPC_SUBCMD_MAXXLINK_SERVICE = 31
-        // Parameter format: "ANTL fullPath"
-        return _controlService.SendCommand(
-            EN_IPC_COMMAND.IPC_COMMAND_MANUAL, 
-            31, 
-            $"ANTL {fullPath}");
-    }
+        if (!File.Exists(fullPath)) return false;
 
-    /// <summary>
-    /// 가공할 NC 파일을 오픈합니다.
-    /// </summary>
-    public bool OpenNcFile(string fileName)
-    {
-        Console.WriteLine($"[NcFileService] Opening NC file: {fileName}");
-        // TODO: MachineControlService를 통해 IPC_COMMAND_OPEN(5) 명령 전달
-        return true; 
-    }
+        string fileName = Path.GetFileName(fullPath);
+        string destPath = Path.Combine(TargetNcPath, fileName);
 
-    /// <summary>
-    /// 현재 오픈된 NC 파일을 닫습니다.
-    /// </summary>
-    public bool CloseNcFile()
-    {
-        Console.WriteLine("[NcFileService] Closing current NC file");
+        try
+        {
+            if (!fullPath.Equals(destPath, StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(fullPath, destPath, true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[NcFileService] File Copy Error: {ex.Message}");
+            return false;
+        }
+
+        var fileMgr = _smService.GetPointer<SNCFileMgr>(FileMgrMapName);
+        var threadState = _smService.GetPointer<SThreadState>("PTHREAD_STATE");
+        
+        if (fileMgr == null || threadState == null) return false;
+
+        SNCFileInfo* pFileInfoBase = (SNCFileInfo*)fileMgr->hNCFileInfo;
+
+        for (int i = 0; i < fileMgr->nNumNCFile; i++)
+        {
+            string registeredName = SharedMemoryService.GetUnicodeString(pFileInfoBase[i].file_name, 257 * 2);
+            if (registeredName.Equals(fileName, StringComparison.OrdinalIgnoreCase))
+            {
+                pFileInfoBase[i].finish = 0;
+                pFileInfoBase[i].state = (ushort)EN_NC_FILESTATE.NCFILE_STATE_BEFORE;
+                
+                try {
+                    pFileInfoBase[i].file_size = (uint)new FileInfo(destPath).Length;
+                } catch { }
+
+                threadState->bUpdateNcFileList_ = 1;
+                return true;
+            }
+        }
+
+        if (fileMgr->nNumNCFile >= 100) return false;
+
+        int newIndex = fileMgr->nNumNCFile;
+        SNCFileInfo newInfo = new SNCFileInfo();
+        
+        string id = DateTime.Now.ToString("yyMMddHHmmss");
+        SharedMemoryService.SetUnicodeString(newInfo.id, id, 26 * 2);
+        SharedMemoryService.SetUnicodeString(newInfo.file_name, fileName, 257 * 2);
+        
+        try {
+            var fi = new FileInfo(destPath);
+            newInfo.file_size = (uint)fi.Length;
+        } catch {
+            newInfo.file_size = 0;
+        }
+
+        newInfo.state = (ushort)EN_NC_FILESTATE.NCFILE_STATE_BEFORE;
+        newInfo.finish = 0;
+        newInfo.is_select = 1;
+
+        pFileInfoBase[newIndex] = newInfo;
+        fileMgr->nNumNCFile++;
+
+        threadState->bUpdateNcFileList_ = 1;
+
         return true;
     }
 
     /// <summary>
-    /// 가공 경로 내의 NC 파일 리스트를 가져옵니다.
+    /// 공유 메모리 리스트에서 NC 파일을 제거하고 물리 파일도 삭제합니다.
     /// </summary>
-    public List<string> GetNcFileList()
+    public unsafe bool RemoveNcFile(string fileName)
     {
-        return new List<string>();
+        var fileMgr = _smService.GetPointer<SNCFileMgr>(FileMgrMapName);
+        var threadState = _smService.GetPointer<SThreadState>("PTHREAD_STATE");
+        
+        if (fileMgr == null || threadState == null) return false;
+
+        SNCFileInfo* pFileInfoBase = (SNCFileInfo*)fileMgr->hNCFileInfo;
+        int targetIndex = -1;
+
+        for (int i = 0; i < fileMgr->nNumNCFile; i++)
+        {
+            string registeredName = SharedMemoryService.GetUnicodeString(pFileInfoBase[i].file_name, 257 * 2);
+            if (registeredName.Equals(fileName, StringComparison.OrdinalIgnoreCase))
+            {
+                targetIndex = i;
+                break;
+            }
+        }
+
+        if (targetIndex == -1) return false;
+
+        if (targetIndex == fileMgr->nCurNCFileIndex) return false;
+
+        for (int i = targetIndex; i < fileMgr->nNumNCFile - 1; i++)
+        {
+            pFileInfoBase[i] = pFileInfoBase[i + 1];
+        }
+
+        fileMgr->nNumNCFile--;
+
+        try
+        {
+            string fullPath = Path.Combine(TargetNcPath, fileName);
+            if (File.Exists(fullPath)) File.Delete(fullPath);
+        }
+        catch { }
+
+        threadState->bUpdateNcFileList_ = 1;
+
+        return true;
+    }
+
+    /// <summary>
+    /// 특정 NC 파일을 가공 준비 상태로 오픈합니다.
+    /// </summary>
+    public unsafe bool OpenNcFile(string fileName)
+    {
+        var fileMgr = _smService.GetPointer<SNCFileMgr>(FileMgrMapName);
+        if (fileMgr == null) return false;
+
+        SNCFileInfo* pFileInfoBase = (SNCFileInfo*)fileMgr->hNCFileInfo;
+        int targetIndex = -1;
+
+        for (int i = 0; i < fileMgr->nNumNCFile; i++)
+        {
+            string registeredName = SharedMemoryService.GetUnicodeString(pFileInfoBase[i].file_name, 257 * 2);
+            if (registeredName.Equals(fileName, StringComparison.OrdinalIgnoreCase))
+            {
+                targetIndex = i;
+                break;
+            }
+        }
+
+        if (targetIndex == -1) return false;
+
+        return _controlService.SendCommand(EN_IPC_COMMAND.IPC_COMMAND_OPEN, (byte)targetIndex);
+    }
+
+    /// <summary>
+    /// 현재 열려있는 NC 파일을 닫습니다. (가공 중일 경우 실패)
+    /// </summary>
+    public unsafe bool CloseNcFile()
+    {
+        var threadState = _smService.GetPointer<SThreadState>("PTHREAD_STATE");
+        if (threadState == null) return false;
+
+        // 가공 동작 중(RUNMODE_RUN)인 경우 Close 불가
+        if (threadState->hRunMode == EN_RUNMODE.RUNMODE_RUN)
+        {
+            return false;
+        }
+
+        return _controlService.SendCommand(EN_IPC_COMMAND.IPC_COMMAND_CLOSE);
+    }
+
+    public unsafe NcFileListDto GetNcFileList()
+    {
+        var result = new NcFileListDto();
+        var fileMgr = _smService.GetPointer<SNCFileMgr>(FileMgrMapName);
+        
+        if (fileMgr != null)
+        {
+            result.TotalCount = fileMgr->nNumNCFile;
+            SNCFileInfo* pFileInfoBase = (SNCFileInfo*)fileMgr->hNCFileInfo;
+
+            for (int i = 0; i < fileMgr->nNumNCFile; i++)
+            {
+                var state = (EN_NC_FILESTATE)pFileInfoBase[i].state;
+                string stateString = state.ToString().Replace("NCFILE_STATE_", "");
+
+                result.Files.Add(new NcFileDto
+                {
+                    ID = SharedMemoryService.GetUnicodeString(pFileInfoBase[i].id, 26 * 2),
+                    FileName = SharedMemoryService.GetUnicodeString(pFileInfoBase[i].file_name, 257 * 2),
+                    FileSize = pFileInfoBase[i].file_size,
+                    State = stateString,
+                    IsFinished = pFileInfoBase[i].finish != 0,
+                    IsSelected = pFileInfoBase[i].is_select != 0
+                });
+            }
+        }
+        
+        return result;
     }
 }

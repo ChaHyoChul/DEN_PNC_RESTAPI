@@ -7,10 +7,12 @@ namespace SMRSvr.Infrastructure.Services;
 public class MachineStatusService
 {
     private readonly SharedMemoryService _smService;
+    private readonly int _totalToolCount;
 
-    public MachineStatusService(SharedMemoryService smService)
+    public MachineStatusService(SharedMemoryService smService, int totalToolCount)
     {
         _smService = smService;
+        _totalToolCount = totalToolCount;
     }
 
     /// <summary>
@@ -42,7 +44,19 @@ public class MachineStatusService
         var threadState = _smService.GetPointer<SThreadState>("PTHREAD_STATE");
         if (threadState != null)
         {
-            dto.RunMode = threadState->hRunMode.ToString();
+            // Run Mode 매핑: TOSTOP, TORUN, RUN 상태는 모두 RUNMODE_RUN으로 전달
+            if (threadState->hRunMode == EN_RUNMODE.RUNMODE_TOSTOP ||
+                threadState->hRunMode == EN_RUNMODE.RUNMODE_TORUN ||
+                threadState->hRunMode == EN_RUNMODE.RUNMODE_RUN)
+            {
+                dto.RunMode = EN_RUNMODE.RUNMODE_RUN.ToString();
+            }
+            else
+            {
+                dto.RunMode = threadState->hRunMode.ToString();
+            }
+
+            dto.ErrorType = threadState->nErrorType;
             dto.ErrorCode = threadState->nErrorCode;
             dto.IsNcFileLoaded = threadState->bIsOpenNCFile != 0;
             
@@ -106,12 +120,11 @@ public class MachineStatusService
 
         if (toolData == null) return result;
 
-        int num_tools = 16; // 실제 툴 개수는 16개로 고정
-
-        result.TotalToolCount = num_tools;
+        result.TotalToolCount = _totalToolCount;
         STool* pTools = (STool*)toolData->hTool;
 
-        for (int i = 1; i <= num_tools; i++)
+        // 설정된 툴 개수만큼만 반복 (인덱스 1부터 시작)
+        for (int i = 1; i <= _totalToolCount; i++)
         {
             STool tool = pTools[i];
 
@@ -182,7 +195,7 @@ public class MachineStatusService
         {
             dto.ErrorType = threadState->nErrorType;
             dto.ErrorCode = threadState->nErrorCode;
-            dto.Message = $"ErrorType: {dto.ErrorType}, ErrorCode: {dto.ErrorCode}";
+            dto.Message = SharedMemoryService.GetUnicodeString(threadState->szErrorMessage, 2048 * 2);
         }
 
         return dto;

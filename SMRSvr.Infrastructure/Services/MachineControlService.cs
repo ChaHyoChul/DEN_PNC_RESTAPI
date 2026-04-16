@@ -28,7 +28,6 @@ public class MachineControlService
 
         if (subCmd > 0 || !string.IsNullOrEmpty(param))
         {
-            // 로컬 구조체의 fixed buffer는 unsafe 내에서 바로 포인터(byte*)로 사용 가능합니다.
             byte* p = command.param;
             p[0] = subCmd; 
             if (!string.IsNullOrEmpty(param))
@@ -40,7 +39,25 @@ public class MachineControlService
         return _smService.EnqueueCommand(QueueName, command);
     }
 
-    public bool Run() => SendCommand(EN_IPC_COMMAND.IPC_COMMAND_RUN);
+    /// <summary>
+    /// 정수형 파라미터를 포함한 IPC 명령을 큐에 추가합니다. (Run 명령 등에서 사용)
+    /// </summary>
+    private unsafe bool SendIntCommand(EN_IPC_COMMAND mainCmd, int intParam)
+    {
+        var command = new SIpcCommCommand
+        {
+            m_cmd = (byte)mainCmd
+        };
+
+        // 로컬 구조체의 fixed buffer는 unsafe 내에서 바로 포인터로 사용 가능합니다.
+        // 별도의 fixed 문이 필요하지 않습니다.
+        byte* p = command.param;
+        *(int*)p = intParam;
+
+        return _smService.EnqueueCommand(QueueName, command);
+    }
+
+    public bool Run(int startLine = 1) => SendIntCommand(EN_IPC_COMMAND.IPC_COMMAND_RUN, startLine);
     public bool Stop() => SendCommand(EN_IPC_COMMAND.IPC_COMMAND_STOP);
     public bool Pause() => SendCommand(EN_IPC_COMMAND.IPC_COMMAND_PAUSE);
     public bool EmergencyStop() => SendCommand(EN_IPC_COMMAND.IPC_COMMAND_EMG);

@@ -13,6 +13,7 @@ public class MachineStatusDto
     public string NcFileName { get; set; } = string.Empty;
     public uint TotalLines { get; set; }
     public uint CurrentLine { get; set; }
+    public int ErrorType { get; set; }
     public int ErrorCode { get; set; }
     public DateTime Timestamp { get; set; } = DateTime.Now;
 }

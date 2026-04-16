@@ -9,7 +9,13 @@ builder.Services.AddSwaggerGen();
 
 // Register Shared Memory Services
 builder.Services.AddSingleton<SharedMemoryService>();
-builder.Services.AddSingleton<MachineStatusService>();
+
+// Read machine settings from appsettings.json
+// MachineStatusService 클래스에 totalToolCount가 있기 때문에 매뉴얼로 객체를 생성하여 등록한다 
+int totalToolCount = builder.Configuration.GetValue<int>("MachineSettings:TotalToolCount", 16);
+builder.Services.AddSingleton<MachineStatusService>(sp => 
+    new MachineStatusService(sp.GetRequiredService<SharedMemoryService>(), totalToolCount));
+
 builder.Services.AddSingleton<MachineControlService>();
 builder.Services.AddSingleton<NcFileService>();
 builder.Services.AddTransient<SharedMemoryTestService>();

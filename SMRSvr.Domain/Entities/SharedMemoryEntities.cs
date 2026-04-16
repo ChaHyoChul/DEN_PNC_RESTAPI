@@ -101,8 +101,8 @@ public unsafe struct SThreadState
     public int bUpdateNcFileListForSD_;
     public fixed uint dwLastUsedToolChangeLineNo_[100];
     public int nLastUsedToolChangeLineNoIndex_;
-    public int nErrorType;
-    public int nErrorCode;
+    public int nErrorType;  // EN_ERR 
+    public int nErrorCode;  // EN_ERR_CODE (타입에 따른 세부 에러 코드)
     public fixed byte szErrorType[128 * 2]; // TCHAR
     public int nErrorTypeIsAlarm;
     public fixed byte szErrorCode[512 * 2]; // TCHAR

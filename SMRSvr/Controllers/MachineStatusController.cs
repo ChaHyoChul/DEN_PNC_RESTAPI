@@ -62,4 +62,14 @@ public class MachineStatusController : ControllerBase
         var result = await Task.Run(() => _machineStatusService.GetIOStatus());
         return Ok(result);
     }
+
+    /// <summary>
+    /// 장비의 현재 에러 정보를 조회합니다.
+    /// </summary>
+    [HttpGet("error")]
+    public async Task<IActionResult> GetError()
+    {
+        var result = await Task.Run(() => _machineStatusService.GetMachineError());
+        return Ok(result);
+    }
 }

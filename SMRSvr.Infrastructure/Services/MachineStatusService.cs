@@ -169,4 +169,22 @@ public class MachineStatusService
 
         return dto;
     }
+
+    /// <summary>
+    /// 장비의 현재 에러 정보를 조회합니다.
+    /// </summary>
+    public unsafe MachineErrorDto GetMachineError()
+    {
+        var threadState = _smService.GetPointer<SThreadState>("PTHREAD_STATE");
+        var dto = new MachineErrorDto();
+
+        if (threadState != null)
+        {
+            dto.ErrorType = threadState->nErrorType;
+            dto.ErrorCode = threadState->nErrorCode;
+            dto.Message = $"ErrorType: {dto.ErrorType}, ErrorCode: {dto.ErrorCode}";
+        }
+
+        return dto;
+    }
 }

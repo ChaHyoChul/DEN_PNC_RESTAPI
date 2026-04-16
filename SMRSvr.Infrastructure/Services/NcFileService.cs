@@ -18,12 +18,27 @@ public class NcFileService
     }
 
     /// <summary>
+    /// 프로그램의 NC 파일 리스트에 새로운 NC 파일을 추가합니다.
+    /// </summary>
+    /// <param name="fullPath">추가할 NC 파일의 절대 경로</param>
+    public bool AddNcFile(string fullPath)
+    {
+        // IPC_COMMAND_MANUAL = 99
+        // IPC_SUBCMD_MAXXLINK_SERVICE = 31
+        // Parameter format: "ANTL fullPath"
+        return _controlService.SendCommand(
+            EN_IPC_COMMAND.IPC_COMMAND_MANUAL, 
+            31, 
+            $"ANTL {fullPath}");
+    }
+
+    /// <summary>
     /// 가공할 NC 파일을 오픈합니다.
     /// </summary>
     public bool OpenNcFile(string fileName)
     {
-        // TODO: MachineControlService를 통해 IPC_COMMAND_OPEN 명령 전달
         Console.WriteLine($"[NcFileService] Opening NC file: {fileName}");
+        // TODO: MachineControlService를 통해 IPC_COMMAND_OPEN(5) 명령 전달
         return true; 
     }
 
@@ -41,7 +56,6 @@ public class NcFileService
     /// </summary>
     public List<string> GetNcFileList()
     {
-        // TODO: 실제 파일 시스템 또는 공유 메모리(NCFILE_MGR)에서 목록 조회
         return new List<string>();
     }
 }

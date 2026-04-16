@@ -19,15 +19,26 @@ public class MachineControlService
     /// <summary>
     /// IPC 명령을 큐에 추가합니다.
     /// </summary>
-    private bool SendCommand(EN_IPC_COMMAND mainCmd, byte subCmd = 0, string param = "")
+    public unsafe bool SendCommand(EN_IPC_COMMAND mainCmd, byte subCmd = 0, string param = "")
     {
         var command = new SIpcCommCommand
         {
             m_cmd = (byte)mainCmd
         };
 
-        // TODO: subCmd 및 param 처리 로직 추가 (SIpcCommCommand 구조체 레이아웃에 맞게)
-        // 현재는 메인 명령 위주로 구현
+        if (subCmd > 0 || !string.IsNullOrEmpty(param))
+        {
+            // SIpcCommCommand의 UParam 구조에 맞춰 데이터 채움
+            // mp (m_cmd 전용 파라미터)와 sp (s_cmd 포함 파라미터) 중 sp 형식을 주로 사용
+            fixed (byte* p = command.param)
+            {
+                p[0] = subCmd; // s_cmd 위치
+                if (!string.IsNullOrEmpty(param))
+                {
+                    SharedMemoryService.SetAnsiString(p + 1, param, 62); // 나머지 62바이트에 param 복사
+                }
+            }
+        }
         
         return _smService.EnqueueCommand(QueueName, command);
     }

@@ -11,7 +11,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<SharedMemoryService>();
 
 // Read machine settings from appsettings.json
-// MachineStatusService Å¬·¡½º¿¡ totalToolCount°¡ ÀÖ±â ¶§¹®¿¡ ¸Å´º¾ó·Î °´Ã¼¸¦ »ý¼ºÇÏ¿© µî·ÏÇÑ´Ù 
+// MachineStatusService Å¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ totalToolCountï¿½ï¿½ ï¿½Ö±ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Å´ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¿ï¿½ ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½ 
 int totalToolCount = builder.Configuration.GetValue<int>("MachineSettings:TotalToolCount", 16);
 builder.Services.AddSingleton<MachineStatusService>(sp => 
     new MachineStatusService(sp.GetRequiredService<SharedMemoryService>(), totalToolCount));
@@ -38,9 +38,13 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseRouting();
 app.UseCors("AllowReactApp");
 app.UseAuthorization();
+
 app.MapControllers();
+app.MapFallbackToFile("index.html");
 
 // Run Shared Memory Test if needed (e.g., during development)
 if (app.Environment.IsDevelopment())

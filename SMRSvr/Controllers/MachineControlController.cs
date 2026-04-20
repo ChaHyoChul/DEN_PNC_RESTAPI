@@ -25,11 +25,12 @@ public class MachineControlController : ControllerBase
     public async Task<IActionResult> Run([FromQuery] int startLine = 1)
     {
         // 1. 에러 상태 체크 (가장 먼저 확인하여 리셋 유도)
-        var errorInfo = _statusService.GetMachineError();
-        if (errorInfo.ErrorCode != 0)
-        {
-            return BadRequest($"장비에 에러(Code: {errorInfo.ErrorCode})가 발생한 상태입니다. 먼저 리셋이 필요합니다.");
-        }
+        // 에러 코드는 에러 릿셋후에도 초기화 되지 않음. RunMode_Error 상태를 확인 하려고 하나, 아래 RunMode 체크 부분과 중복 됨 
+        //var errorInfo = _statusService.GetMachineError();
+        //if (errorInfo.ErrorCode != 0)
+        //{
+        //    return BadRequest($"장비에 에러(Code: {errorInfo.ErrorCode})가 발생한 상태입니다. 먼저 리셋이 필요합니다.");
+        //}
 
         var status = _statusService.GetMachineStatus();
         

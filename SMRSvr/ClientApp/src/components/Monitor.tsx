@@ -50,7 +50,7 @@ export default function Monitor() {
   const fetchFileList = useCallback(async () => {
     try {
       const response = await axios.get<NcFileList>(`${BASE_URL}/pnc/NcFileManage/list`);
-      setNcFiles(response.data.files);
+      setNcFiles(response.data.files || []);
     } catch (err) {
       console.error('Failed to fetch file list', err);
     }
@@ -150,7 +150,7 @@ export default function Monitor() {
   return (
     <div style={{ padding: '20px', fontFamily: 'monospace' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #333', paddingBottom: '10px', marginBottom: '20px' }}>
-        <h1 style={{ margin: 0, color: '#74c0fc', fontSize: '36px' }}>CNC Real-time Monitor</h1>
+        <h1 style={{ margin: 0, color: '#74c0fc', fontSize: '36px' }}>PNC Real-time Monitor</h1>
         <div style={{ 
           padding: '5px 15px', 
           borderRadius: '20px', 
@@ -166,18 +166,18 @@ export default function Monitor() {
       {error && <div style={{ color: '#ff6b6b', marginBottom: '20px', fontSize: '14px' }}>⚠️ {error}</div>}
       
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginBottom: '20px' }}>
-        <CoordinateCard label="X" value={status?.position[0]} color="#4dabf7" />
-        <CoordinateCard label="Y" value={status?.position[1]} color="#4dabf7" />
-        <CoordinateCard label="Z" value={status?.position[2]} color="#4dabf7" />
-        <CoordinateCard label="A" value={status?.position[3]} color="#51cf66" />
-        <CoordinateCard label="B" value={status?.position[4]} color="#51cf66" />
+        <CoordinateCard label="X" value={status?.position?.[0]} color="#4dabf7" />
+        <CoordinateCard label="Y" value={status?.position?.[1]} color="#4dabf7" />
+        <CoordinateCard label="Z" value={status?.position?.[2]} color="#4dabf7" />
+        <CoordinateCard label="A" value={status?.position?.[3]} color="#51cf66" />
+        <CoordinateCard label="B" value={status?.position?.[4]} color="#51cf66" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
         <InfoSection title="File Information">
           <InfoItem label="NC File" value={status?.ncFileName || 'None'} />
-          <InfoItem label="Progress" value={status ? `${status.currentLine} / ${status.totalLines}` : '0 / 0'} />
-          <InfoItem label="Tool No" value={status?.currentToolNo.toString() || '0'} />
+          <InfoItem label="Progress" value={(status?.currentLine !== undefined && status?.totalLines !== undefined) ? `${status.currentLine} / ${status.totalLines}` : '0 / 0'} />
+          <InfoItem label="Tool No" value={status?.currentToolNo?.toString() || '0'} />
         </InfoSection>
 
         <InfoSection title="System Status">

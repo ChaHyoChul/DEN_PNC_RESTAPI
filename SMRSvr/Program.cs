@@ -31,7 +31,7 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// if (app.Environment.IsDevelopment()) // publish에서도 swagger가 보이도록 수정
 {
     app.UseSwagger();
     app.UseSwaggerUI();

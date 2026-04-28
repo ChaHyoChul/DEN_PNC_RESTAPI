@@ -153,7 +153,9 @@ public class NcFileService
     public unsafe bool OpenNcFile(string fileName)
     {
         var fileMgr = _smService.GetPointer<SNCFileMgr>(FileMgrMapName);
-        if (fileMgr == null) return false;
+        var threadState = _smService.GetPointer<SThreadState>("PTHREAD_STATE");
+        
+        if (fileMgr == null || threadState == null) return false;
 
         SNCFileInfo* pFileInfoBase = (SNCFileInfo*)fileMgr->hNCFileInfo;
         int targetIndex = -1;
@@ -170,7 +172,21 @@ public class NcFileService
 
         if (targetIndex == -1) return false;
 
-        return _controlService.SendCommand(EN_IPC_COMMAND.IPC_COMMAND_OPEN, (byte)targetIndex);
+        //// 선제적 데이터 업데이트 (PNC UI 갱신용)
+        //for (int i = 0; i < fileMgr->nNumNCFile; i++)
+        //{
+        //    pFileInfoBase[i].is_select = 0;
+        //}
+        //pFileInfoBase[targetIndex].state = (ushort)EN_NC_FILESTATE.NCFILE_STATE_OPEN;
+        //pFileInfoBase[targetIndex].is_select = 1;
+        //fileMgr->nCurNCFileIndex = targetIndex;
+
+        bool result = _controlService.SendCommand(EN_IPC_COMMAND.IPC_COMMAND_OPEN, (byte)targetIndex);
+        if (result)
+        {
+            threadState->bUpdateNcFileList_ = 1;
+        }
+        return result;
     }
 
     /// <summary>
@@ -178,7 +194,9 @@ public class NcFileService
     /// </summary>
     public unsafe bool CloseNcFile()
     {
+        //var fileMgr = _smService.GetPointer<SNCFileMgr>(FileMgrMapName);
         var threadState = _smService.GetPointer<SThreadState>("PTHREAD_STATE");
+        
         if (threadState == null) return false;
 
         // 가공 동작 중(RUNMODE_RUN)인 경우 Close 불가
@@ -187,7 +205,26 @@ public class NcFileService
             return false;
         }
 
-        return _controlService.SendCommand(EN_IPC_COMMAND.IPC_COMMAND_CLOSE);
+        //// 선제적 데이터 업데이트 (PNC UI 갱신용)
+        //if (fileMgr->nCurNCFileIndex >= 0 && fileMgr->nCurNCFileIndex < fileMgr->nNumNCFile)
+        //{
+        //    SNCFileInfo* pFileInfoBase = (SNCFileInfo*)fileMgr->hNCFileInfo;
+        //    pFileInfoBase[fileMgr->nCurNCFileIndex].state = (ushort)EN_NC_FILESTATE.NCFILE_STATE_BEFORE;
+        //}
+        
+        //for (int i = 0; i < fileMgr->nNumNCFile; i++)
+        //{
+        //    SNCFileInfo* pFileInfoBase = (SNCFileInfo*)fileMgr->hNCFileInfo;
+        //    pFileInfoBase[i].is_select = 0;
+        //}
+        //fileMgr->nCurNCFileIndex = -1;
+
+        bool result = _controlService.SendCommand(EN_IPC_COMMAND.IPC_COMMAND_CLOSE);
+        if (result)
+        {
+            threadState->bUpdateNcFileList_ = 1;
+        }
+        return result;
     }
 
     public unsafe NcFileListDto GetNcFileList()

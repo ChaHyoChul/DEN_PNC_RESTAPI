@@ -66,6 +66,7 @@ export default function Monitor() {
   }, [fetchStatus, fetchFileList]);
 
   const handleRun = async () => {
+    if (!window.confirm('가공을 시작하시겠습니까?')) return;
     try {
       await axios.post(`${BASE_URL}/pnc/MachineControl/run`);
     } catch (err: any) {
@@ -74,6 +75,7 @@ export default function Monitor() {
   };
 
   const handleStop = async () => {
+    if (!window.confirm('가공을 중지하시겠습니까?')) return;
     try {
       await axios.post(`${BASE_URL}/pnc/MachineControl/stop`);
     } catch (err: any) {
@@ -82,6 +84,7 @@ export default function Monitor() {
   };
 
   const handlePause = async () => {
+    if (!window.confirm('가공을 일시 정지하시겠습니까?')) return;
     try {
       await axios.post(`${BASE_URL}/pnc/MachineControl/pause`);
     } catch (err: any) {
@@ -107,18 +110,18 @@ export default function Monitor() {
 
   const handleOpen = async () => {
     if (!selectedFileName) return alert('파일을 선택해주세요.');
+    if (!window.confirm(`선택한 파일(${selectedFileName})을 오픈하시겠습니까?`)) return;
     try {
       await axios.post(`${BASE_URL}/pnc/NcFileManage/open`, null, { params: { fileName: selectedFileName } });
-      alert('파일 오픈 명령을 전송했습니다.');
     } catch (err: any) {
       alert(err.response?.data?.message || '파일 오픈에 실패했습니다.');
     }
   };
 
   const handleClose = async () => {
+    if (!window.confirm('현재 열려있는 파일을 닫으시겠습니까?')) return;
     try {
       await axios.post(`${BASE_URL}/pnc/NcFileManage/close`);
-      alert('파일 클로즈 명령을 전송했습니다.');
     } catch (err: any) {
       alert(err.response?.data?.message || '파일 클로즈에 실패했습니다.');
     }
@@ -181,7 +184,11 @@ export default function Monitor() {
         </InfoSection>
 
         <InfoSection title="System Status">
-          <InfoItem label="Error Type/Code" value={status ? `${status.errorType} / ${status.errorCode}` : '0 / 0'} color={(status?.errorType !== 0 || status?.errorCode !== 0) ? '#ff6b6b' : '#fff'} />
+          <InfoItem 
+            label="Error Type/Code" 
+            value={(status?.runMode === 'RUNMODE_ERROR') ? `${status.errorType} / ${status.errorCode}` : '0 / 0'} 
+            color={(status?.runMode === 'RUNMODE_ERROR') ? '#ff6b6b' : '#fff'} 
+          />
           <InfoItem label="Sync Time" value={status ? new Date(status.timestamp).toLocaleTimeString() : 'N/A'} />
         </InfoSection>
       </div>

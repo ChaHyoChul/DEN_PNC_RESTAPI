@@ -1,6 +1,16 @@
 using SMRSvr.Infrastructure.Services;
 
-var builder = WebApplication.CreateBuilder(args);
+var options = new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = AppContext.BaseDirectory
+};
+
+var builder = WebApplication.CreateBuilder(options);
+
+// Read port from appsettings.json and apply
+var restApiPort = builder.Configuration.GetValue<int>("MachineSettings:RestApiPort", 5005);
+builder.WebHost.UseUrls($"http://localhost:{restApiPort}");
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -11,7 +21,6 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<SharedMemoryService>();
 
 // Read machine settings from appsettings.json
-// MachineStatusService Ŭ������ totalToolCount�� �ֱ� ������ �Ŵ���� ��ü�� �����Ͽ� ����Ѵ� 
 int totalToolCount = builder.Configuration.GetValue<int>("MachineSettings:TotalToolCount", 16);
 builder.Services.AddSingleton<MachineStatusService>(sp => 
     new MachineStatusService(sp.GetRequiredService<SharedMemoryService>(), totalToolCount));
@@ -31,11 +40,9 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-// if (app.Environment.IsDevelopment()) // publish에서도 swagger가 보이도록 수정
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// In this internal tool, we enable Swagger even in Production mode for convenience.
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
